@@ -5,15 +5,20 @@ namespace Accounting
 {
     public partial class MainForm : Form
     {
+        // These are private variables that will be used in the column calculations and used to adjust the ledger later
         private int _totalWidth = 0;
         private double _amountPaid = 0;
 
         public MainForm()
         {
             this.InitializeComponent();
+            // Populates the Bills tab with any bills/debtors in the db
             LoadDebtors();
         }
 
+        /// <summary>
+        /// This calls the db and then populates the appropriate tab canvas
+        /// </summary>
         private void LoadIncomes()
         {
             incomeDataGrid.BackgroundColor = Color.White;
@@ -51,6 +56,9 @@ namespace Accounting
             }
         }
 
+        /// <summary>
+        /// This calls the db and then populates the appropriate tab canvas
+        /// </summary>
         private void LoadLedger()
         {
             balanceDataGrid.BackgroundColor = Color.White;
@@ -87,6 +95,9 @@ namespace Accounting
             }
         }
 
+        /// <summary>
+        /// This calls the db and then populates the appropriate tab canvas
+        /// </summary>
         private void LoadDebtors()
         {
             debtorsDataGrid.BackgroundColor = Color.White;
@@ -127,6 +138,11 @@ namespace Accounting
             }
         }
 
+        /// <summary>
+        /// This method adds a new debtor to the db when the Add Bill button is clicked
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void AddBill_Click(object sender, EventArgs e)
         {
             // Creating an new instance of the AddDebtorview
@@ -145,6 +161,11 @@ namespace Accounting
             }
         }
 
+        /// <summary>
+        /// This method adds a new source of income when the Add Income button is clicked
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void addIncome_Click(object sender, EventArgs e)
         {
             // Launch the Income Form
@@ -158,6 +179,11 @@ namespace Accounting
             }
         }
 
+        /// <summary>
+        /// This controls what data is loaded into the data grid based of what tab is clicked
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void viewTabControl_Click(object sender, EventArgs e)
         {
             if (viewTabControl.SelectedIndex == 0)
@@ -178,6 +204,11 @@ namespace Accounting
             }
         }
 
+        /// <summary>
+        /// This displays a new form to pay a bill when any record is clicked in the debtorsDataGrid (bills)
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void debtorsDataGrid_CellClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex >= 0)
@@ -188,16 +219,23 @@ namespace Accounting
                 var isPaid = debtorsDataGrid.Rows[e.RowIndex].Cells[3].Value?.ToString() ?? "No Data";
                 var dueDate = debtorsDataGrid.Rows[e.RowIndex].Cells[4].Value?.ToString() ?? "No Data";
 
+                // If Pay is clicked the form returns the appropriate information for the updateLedgerPayment function to run
                 PayBill payBill = new PayBill(recordID, companyName, amountDue, isPaid, dueDate);
                 if (payBill.ShowDialog() == DialogResult.OK)
                 {
                     _amountPaid = payBill.amountPaid;
                     updateLedgerPayment(_amountPaid, Convert.ToInt16(recordID));
                 }
+                // Reloads the datagrid to show the new info
                 LoadDebtors();
             }
         }
 
+        /// <summary>
+        /// This method calculates changes to the ledger based of payments made and updates it.
+        /// </summary>
+        /// <param name="amountPaid"></param>
+        /// <param name="debtorID"></param>
         private void updateLedgerPayment(double amountPaid, int debtorID)
         {
             var ledgerRepo = new LedgerQueries(new DatabaseHelper());
@@ -205,6 +243,7 @@ namespace Accounting
 
             double newBalance;
 
+            // If there is a previous entry take it and subtract the payment
             if (lastEntry != null)
             {
                 double startBalance = Convert.ToDouble(lastEntry.balance);
@@ -212,9 +251,11 @@ namespace Accounting
             }
             else
             {
+                // If no previous entry start in the negatives
                 newBalance = -amountPaid;
             }
 
+            // Create a new ledger object and update the database
             Ledger ledger = new Ledger
             {
                 trans_date = DateTime.Now.ToString("yyyy-MM-dd"),
@@ -222,10 +263,14 @@ namespace Accounting
                 balance = newBalance,
                 debtor_id = debtorID,
             };
-
             ledgerRepo.AddLedger(ledger);
         }
 
+        /// <summary>
+        /// This method updates the database with a new source of income.
+        /// </summary>
+        /// <param name="amountPaid"></param>
+        /// <param name="incomeID"></param>
         private void updateLedgerIncome(double amountPaid, int incomeID)
         {
             var ledgerRepo = new LedgerQueries(new DatabaseHelper());
@@ -250,7 +295,6 @@ namespace Accounting
                 balance = newBalance,
                 income_id = incomeID,
             };
-
             ledgerRepo.AddLedger(ledger);
         }
     }
